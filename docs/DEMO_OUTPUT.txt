@@ -1,0 +1,70 @@
+created .env (mode 600). Back up N8N_ENCRYPTION_KEY: without it, saved credentials cannot be decrypted after a restore.
+n8n: http://127.0.0.1:5678
+ automation-platform-ops-n8n-1 Copying workflows/demo.json to automation-platform-ops-n8n-1:/tmp/demo.json
+ automation-platform-ops-n8n-1 Copied workflows/demo.json to automation-platform-ops-n8n-1:/tmp/demo.json
+backup: backups/n8n-20261124T235913Z.dump (75866 bytes)
+NOTICE:  database "restore_test" does not exist, skipping
+workflow_entity: live=1 restored=1
+user: live=1 restored=1
+PASS restore of backups/n8n-20261124T235913Z.dump
+PASS postgres  B1 image tag is pinned
+PASS postgres  B2 published ports bind to loopback
+PASS postgres  B3 no literal secrets in the file
+PASS postgres  B4 restart policy set
+PASS postgres  B5 healthcheck defined
+PASS postgres  B6 no-new-privileges
+PASS redis     B1 image tag is pinned
+PASS redis     B2 published ports bind to loopback
+PASS redis     B3 no literal secrets in the file
+PASS redis     B4 restart policy set
+PASS redis     B5 healthcheck defined
+PASS redis     B6 no-new-privileges
+PASS redis     B7 redis uses noeviction (queue data must not be evicted)
+PASS redis     B8 redis persistence on
+PASS n8n       B1 image tag is pinned
+PASS n8n       B2 published ports bind to loopback
+PASS n8n       B3 no literal secrets in the file
+PASS n8n       B4 restart policy set
+PASS n8n       B5 healthcheck defined
+PASS n8n       B6 no-new-privileges
+PASS worker    B1 image tag is pinned
+PASS worker    B2 published ports bind to loopback
+PASS worker    B3 no literal secrets in the file
+PASS worker    B4 restart policy set
+PASS worker    B5 healthcheck defined
+PASS worker    B6 no-new-privileges
+26 passed, 0 failed
+{
+  "generated_at": "20261124T235915Z",
+  "compose_sha256": "4ca56c91fbb57c6c21f7c41b56ec94ed0ad92a0005767f7233c7d15b44d2f3ea",
+  "images": {
+    "n8n": "docker.n8n.io/n8nio/n8n:1.78.1",
+    "postgres": "postgres:16.6",
+    "redis": "redis:7.4.1",
+    "worker": "docker.n8n.io/n8nio/n8n:1.78.1"
+  },
+  "backup": {
+    "count": 1,
+    "latest": "backups/n8n-20261124T235913Z.dump",
+    "latest_age_hours": 0.0,
+    "latest_sha256": "0ebb2da5ac4c58c7975e67a13c4b9ac96e488a24c410a283fcfa05efa378e136"
+  },
+  "restore_test": {
+    "backup": "backups/n8n-20261124T235913Z.dump",
+    "at": "20261124T235915Z",
+    "passed": true
+  },
+  "baseline": {
+    "passed": 26,
+    "failed": 0,
+    "failures": []
+  },
+  "control_notes": [
+    "Backup age and restore proof are evidence for a recovery control.",
+    "Baseline rule ids B1 to B8 are cited in the findings.",
+    "Access reviews and secret rotation are process controls; this tool does not evidence them."
+  ]
+}
+n8n 9.9.9 did not become healthy; rolling back to 1.78.1
+rolled back to 1.78.1. Database changes made by 9.9.9 migrations are not undone; restore from the backup if the old version rejects them.
+upgraded 1.78.1 -> 1.80.0

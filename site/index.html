@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>automation-platform-ops: running n8n like a regulated platform</title>
+  <meta name="description" content="n8n in queue mode with PostgreSQL and Redis on Docker: restored backups, upgrades that roll back, a hardening baseline with rule ids, and audit evidence as JSON.">
+  <link rel="canonical" href="https://gerardrecinto.github.io/automation-platform-ops/">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#0b0f14">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="automation-platform-ops">
+  <meta property="og:description" content="Run a workflow automation platform with backups you have restored, upgrades that roll back, and evidence an auditor can read.">
+  <meta property="og:url" content="https://gerardrecinto.github.io/automation-platform-ops/">
+  <style>
+    :root { --bg:#0b0f14; --bg2:#10161d; --card:#121921; --line:#1f2a35; --fg:#e8eef4; --muted:#93a3b4; --accent:#2dd4bf; --accent2:#38bdf8; --warn:#f59e0b; --ok:#10b981; }
+    @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --bg:#f7f9fb; --bg2:#eef2f6; --card:#fff; --line:#dbe3ea; --fg:#0f1720; --muted:#53657a; --accent:#0d9488; --accent2:#0284c7; --warn:#b45309; --ok:#059669; } }
+    :root[data-theme="light"] { --bg:#f7f9fb; --bg2:#eef2f6; --card:#fff; --line:#dbe3ea; --fg:#0f1720; --muted:#53657a; --accent:#0d9488; --accent2:#0284c7; --warn:#b45309; --ok:#059669; }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 5rem; }
+    body { margin:0; background:var(--bg); color:var(--fg); font:400 1rem/1.65 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; -webkit-font-smoothing:antialiased; }
+    a { color:var(--accent2); }
+    code, pre { font-family: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.88em; }
+    code { background:var(--bg2); border:1px solid var(--line); border-radius:6px; padding:.1em .4em; }
+    .wrap { max-width:1080px; margin:0 auto; padding:0 1.25rem; }
+    header.nav { position:sticky; top:0; z-index:5; background:color-mix(in srgb,var(--bg) 82%,transparent); backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
+    .nav .wrap { display:flex; align-items:center; gap:1.25rem; height:3.6rem; }
+    .brand { font-weight:700; color:var(--fg); text-decoration:none; letter-spacing:-.01em; }
+    .nav a.l { color:var(--muted); text-decoration:none; font-size:.92rem; } .nav a.l:hover { color:var(--fg); }
+    .sp { flex:1; }
+    @media (max-width:760px) { .nav a.l { display:none; } table, thead, tbody, tr, td, th { display:block; } thead { display:none; } td { border:0; padding:.2rem .7rem; } tr { border-bottom:1px solid var(--line); padding:.5rem 0; } }
+    button, .btn { font:inherit; cursor:pointer; }
+    .icon { background:none; border:1px solid var(--line); color:var(--fg); border-radius:8px; padding:.3rem .6rem; }
+    .btn { display:inline-block; padding:.65rem 1.1rem; border-radius:10px; border:1px solid var(--line); color:var(--fg); text-decoration:none; font-weight:600; background:var(--card); }
+    .btn.primary { background:var(--accent); color:#06201c; border-color:var(--accent); }
+    .btn:focus-visible, .icon:focus-visible, input:focus-visible, a:focus-visible { outline:2px solid var(--accent2); outline-offset:2px; }
+    .hero { padding:4.5rem 0 3rem; background:radial-gradient(900px 400px at 20% -10%, color-mix(in srgb,var(--accent) 16%,transparent), transparent); }
+    h1 { font-size:clamp(2rem,5vw,3.4rem); line-height:1.1; letter-spacing:-.03em; margin:0 0 1rem; max-width:18ch; }
+    .lead { color:var(--muted); font-size:1.15rem; max-width:62ch; margin:0 0 1.6rem; }
+    .row { display:flex; flex-wrap:wrap; gap:.7rem; }
+    .chips { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:1.6rem; padding:0; list-style:none; }
+    .chips li { font-size:.82rem; border:1px solid var(--line); border-radius:999px; padding:.2rem .7rem; color:var(--muted); background:var(--card); }
+    section { padding:3rem 0; border-top:1px solid var(--line); }
+    h2 { font-size:1.6rem; letter-spacing:-.02em; margin:0 0 .5rem; }
+    .sub { color:var(--muted); margin:0 0 1.6rem; max-width:70ch; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(290px,1fr)); gap:1rem; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:1.1rem 1.2rem; }
+    .card h3 { margin:.1rem 0 .4rem; font-size:1.02rem; }
+    .card p { margin:0 0 .6rem; color:var(--muted); font-size:.94rem; }
+    .tag { font-size:.74rem; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; }
+    .flow { overflow-x:auto; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:1rem; }
+    .flow svg { min-width:760px; width:100%; height:auto; }
+    .flow text { fill:var(--fg); font:600 12px system-ui,sans-serif; } .flow .m { fill:var(--muted); font-weight:400; font-size:10.5px; }
+    .flow rect.b { fill:var(--bg2); stroke:var(--line); } .flow rect.a { fill:color-mix(in srgb,var(--accent) 14%,var(--bg2)); stroke:var(--accent); }
+    .flow path { stroke:var(--muted); fill:none; stroke-width:1.4; }
+    .planner { display:grid; grid-template-columns:minmax(0,300px) 1fr; gap:1.2rem; align-items:start; }
+    @media (max-width:760px) { .planner { grid-template-columns:1fr; } }
+    label { display:block; font-size:.9rem; font-weight:600; margin:.9rem 0 .2rem; } label:first-child { margin-top:0; }
+    input[type=range] { width:100%; accent-color:var(--accent); }
+    output { font-variant-numeric:tabular-nums; color:var(--accent); font-weight:700; }
+    .stats { display:grid; grid-template-columns:repeat(2,1fr); gap:.6rem; margin-top:1rem; }
+    .stat { background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:.55rem .7rem; }
+    .stat b { display:block; font-size:1.2rem; font-variant-numeric:tabular-nums; } .stat span { font-size:.78rem; color:var(--muted); }
+    .chart { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:.8rem; }
+    .chart svg { width:100%; height:auto; display:block; }
+    .chart text { fill:var(--muted); font:11px system-ui,sans-serif; }
+    .note { color:var(--muted); font-size:.85rem; margin-top:.6rem; }
+    table { width:100%; border-collapse:collapse; font-size:.93rem; }
+    th, td { text-align:left; padding:.6rem .7rem; border-bottom:1px solid var(--line); vertical-align:top; }
+    th { color:var(--muted); font-weight:600; font-size:.8rem; text-transform:uppercase; letter-spacing:.05em; }
+    .yes { color:var(--ok); font-weight:700; } .no { color:var(--warn); font-weight:700; }
+    pre code { background:none; border:0; padding:0; font-size:.85rem; }
+    pre { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:1rem; overflow-x:auto; }
+    footer { padding:2rem 0 3rem; border-top:1px solid var(--line); color:var(--muted); font-size:.9rem; }
+    .sr { position:absolute; left:-9999px; }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior:auto; } }
+  </style>
+</head>
+<body>
+<a class="sr" href="#main">Skip to content</a>
+<header class="nav"><div class="wrap">
+  <a class="brand" href="#">automation-platform-ops</a>
+  <a class="l" href="#stack">Stack</a><a class="l" href="#baseline">Baseline</a><a class="l" href="#run">Recorded run</a><a class="l" href="#verified">Verified</a>
+  <span class="sp"></span>
+  <button class="icon" id="theme" aria-label="Switch between light and dark theme">Theme</button>
+  <a class="btn" href="https://github.com/gerardrecinto/automation-platform-ops">Source</a>
+</div></header>
+<main id="main">
+<div class="hero"><div class="wrap">
+  <h1>A workflow platform you can restore, upgrade and audit.</h1>
+  <p class="lead">n8n in queue mode with PostgreSQL and Redis on Docker. The backup is restored into a scratch database and counted on every run, an upgrade rolls back if the new version does not become healthy, and a baseline check and an evidence report cite rule ids an auditor can read. One host, lab scale, and this page says what that means.</p>
+  <div class="row"><a class="btn primary" href="#run">See the recorded run</a><a class="btn" href="https://github.com/gerardrecinto/automation-platform-ops">Read the code</a></div>
+  <ul class="chips" aria-label="Checks"><li>26 of 26 baseline checks</li><li>restore proven, counts match</li><li>upgrade 1.78.1 to 1.80.0</li><li>8 tests, 4 that must fail</li></ul>
+</div></div>
+
+<section id="stack"><div class="wrap">
+  <h2>The stack</h2>
+  <p class="sub">Queue mode splits the web process from the workers, so a slow workflow does not freeze the editor.</p>
+  <div class="grid">
+    <article class="card"><span class="tag">n8n</span><h3>Main and worker</h3><p>Pinned image tag, port bound to loopback, no-new-privileges, capabilities dropped, a health check on both processes.</p></article>
+    <article class="card"><span class="tag">PostgreSQL 16.6</span><h3>State and backups</h3><p><code>pg_dump</code> with a manifest of time, size and sha256. <code>restore-test.sh</code> loads the newest dump into a scratch database and compares row counts with the live one.</p></article>
+    <article class="card"><span class="tag">Redis 7.4.1</span><h3>The job queue</h3><p>Append-only file on, <code>noeviction</code> so memory pressure rejects new jobs instead of silently dropping queued ones.</p></article>
+    <article class="card"><span class="tag">Upgrade</span><h3>With a way back</h3><p>Backup, switch the tag, wait for health, roll back the image if it fails. Migrations are not undone, and the script says so.</p></article>
+  </div>
+</div></section>
+
+<section id="baseline"><div class="wrap">
+  <h2>Hardening baseline</h2>
+  <p class="sub">Eight rules over the compose file, each with an id so a finding can be cited. The tests prove the rules fail when they should.</p>
+  <table>
+    <thead><tr><th>Rule</th><th>Fails when</th></tr></thead>
+    <tbody>
+      <tr><td>B1 image tag is pinned</td><td>The tag is <code>latest</code> or an unset variable</td></tr>
+      <tr><td>B2 ports bind to loopback</td><td>A port is published on all interfaces</td></tr>
+      <tr><td>B3 no literal secrets</td><td>A password, key or token is written in the file</td></tr>
+      <tr><td>B4 restart policy, B5 healthcheck, B6 no-new-privileges</td><td>Missing on any service</td></tr>
+      <tr><td>B7 and B8 Redis</td><td>Eviction is not <code>noeviction</code>, or persistence is off</td></tr>
+    </tbody>
+  </table>
+  <p class="note">Evidence: <code>python -m platformcheck evidence</code> prints images, rule results, newest backup age and checksum, and the last restore test, and exits 1 if the backup is older than 26 hours or no restore passed. Access reviews and secret rotation are process controls and are not evidenced by the tool.</p>
+</div></section>
+
+<section id="run"><div class="wrap">
+  <h2>Recorded run</h2>
+  <p class="sub">Output of <code>scripts/demo.sh</code> and two upgrades, trimmed. The full file is <a href="https://github.com/gerardrecinto/automation-platform-ops/blob/main/docs/DEMO_OUTPUT.txt">docs/DEMO_OUTPUT.txt</a>.</p>
+<pre><code>workflow_entity: live=1 restored=1
+user: live=1 restored=1
+PASS restore of backups/n8n-20261124T235913Z.dump
+26 passed, 0 failed
+n8n 9.9.9 did not become healthy; rolling back to 1.78.1
+rolled back to 1.78.1. Database changes made by 9.9.9 migrations are not undone; restore from the backup if the old version rejects them.
+upgraded 1.78.1 -&gt; 1.80.0</code></pre>
+  <p class="note">The rollback line comes from upgrading to a tag that does not exist. A version that pulls and then fails after a migration was not tested.</p>
+</div></section>
+
+<section id="verified"><div class="wrap">
+  <h2>What is verified</h2>
+  <div class="grid">
+    <article class="card"><span class="tag yes">Run</span><h3>On Docker, in CI</h3><p>Start, import a workflow, back up, restore and compare, baseline, evidence, and an upgrade to 1.80.0.</p></article>
+    <article class="card"><span class="tag no">Not here</span><h3>Other repos cover these</h3><p>Replication and failover: <a href="https://gerardrecinto.github.io/postgres-ops-lab/">postgres-ops-lab</a>. Sentinel: <a href="https://gerardrecinto.github.io/redis-ops-lab/">redis-ops-lab</a>. Entra ID and OIDC checks: <a href="https://gerardrecinto.github.io/entra-identity-governance/">entra-identity-governance</a>.</p></article>
+    <article class="card"><span class="tag no">Not done</span><h3>Honest gaps</h3><p>No SSO wired into n8n, no Retool or Base64.ai, no multi-environment promotion, no real bank controls. One host.</p></article>
+  </div>
+</div></section>
+</main>
+<footer><div class="wrap">MIT licensed. <a href="https://github.com/gerardrecinto/automation-platform-ops">github.com/gerardrecinto/automation-platform-ops</a> by Gerard Recinto.</div></footer>
+<script>
+const root = document.documentElement;
+const saved = localStorage.getItem("theme");
+if (saved) root.dataset.theme = saved;
+document.getElementById("theme").addEventListener("click", () => {
+  const dark = (root.dataset.theme || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")) === "dark";
+  root.dataset.theme = dark ? "light" : "dark";
+  localStorage.setItem("theme", root.dataset.theme);
+});
+</script>
+</body>
+</html>
