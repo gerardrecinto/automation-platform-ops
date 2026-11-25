@@ -15,8 +15,12 @@ jobs:
           python-version: "3.12"
       - run: pip install -e ".[dev]" && pytest -q
       - run: python -m platformcheck harden compose.yaml
+      - name: Alert rules
+        run: |
+          docker run --rm --entrypoint promtool -v "$PWD/monitoring:/etc/prometheus" prom/prometheus:v2.55.1 check config /etc/prometheus/prometheus.yml
+          docker run --rm --entrypoint promtool -v "$PWD/monitoring:/m" -w /m prom/prometheus:v2.55.1 test rules alerts.test.yml
   stack:
-    name: Run the stack, back up, restore, upgrade
+    name: Run the stack, back up, restore, upgrade, rotate, promote
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -27,3 +31,15 @@ jobs:
       - run: pip install -e .
       - run: ./scripts/demo.sh
       - run: ./scripts/upgrade.sh 1.80.0
+      - name: Rotate the database password and prove the platform still works
+        run: |
+          ./scripts/rotate-db-password.sh
+          curl -fsS http://127.0.0.1:5678/healthz
+          ./scripts/backup.sh && ./scripts/restore-test.sh
+      - name: Promotion gate refuses a skipped step, then allows the right order
+        run: |
+          ! python -m platformcheck promote qa --version 1.80.0
+          python -m platformcheck promote dev --version 1.80.0
+          python -m platformcheck promote qa --version 1.80.0
+          ! python -m platformcheck promote uat --version 1.80.0
+          python -m platformcheck promote uat --version 1.80.0 --approver ci
