@@ -1,0 +1,24 @@
+groups:
+  - name: n8n-platform
+    rules:
+      - alert: N8nDown
+        expr: up{job="n8n"} == 0
+        for: 2m
+        labels: {severity: page}
+        annotations:
+          summary: n8n is not answering its metrics endpoint
+          runbook: docs/RUNBOOK.md#n8n-is-down
+      - alert: QueueBacklog
+        expr: n8n_scaling_mode_queue_jobs_waiting > 100
+        for: 10m
+        labels: {severity: page}
+        annotations:
+          summary: more than 100 jobs have waited for a worker for 10 minutes
+          runbook: docs/RUNBOOK.md#redis-is-full-or-down
+      - alert: JobsFailing
+        expr: increase(n8n_scaling_mode_queue_jobs_failed[15m]) > 5
+        for: 5m
+        labels: {severity: ticket}
+        annotations:
+          summary: more than 5 jobs failed in 15 minutes
+          runbook: docs/RUNBOOK.md#n8n-is-down

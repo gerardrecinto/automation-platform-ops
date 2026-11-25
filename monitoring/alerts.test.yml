@@ -1,0 +1,29 @@
+rule_files: [alerts.yml]
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'up{job="n8n"}'
+        values: '1 1 0 0 0 0'
+    alert_rule_test:
+      - {eval_time: 2m, alertname: N8nDown, exp_alerts: []}
+      - eval_time: 5m
+        alertname: N8nDown
+        exp_alerts:
+          - exp_labels: {severity: page, job: n8n}
+            exp_annotations:
+              summary: n8n is not answering its metrics endpoint
+              runbook: docs/RUNBOOK.md#n8n-is-down
+  - interval: 1m
+    input_series:
+      - series: 'n8n_scaling_mode_queue_jobs_waiting'
+        values: '0+20x20'
+    alert_rule_test:
+      - {eval_time: 6m, alertname: QueueBacklog, exp_alerts: []}
+      - eval_time: 20m
+        alertname: QueueBacklog
+        exp_alerts:
+          - exp_labels: {severity: page}
+            exp_annotations:
+              summary: more than 100 jobs have waited for a worker for 10 minutes
+              runbook: docs/RUNBOOK.md#redis-is-full-or-down

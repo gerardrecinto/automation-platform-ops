@@ -6,3 +6,5 @@ __pycache__/
 *.tfstate*
 node_modules/
 .DS_Store
+.env
+backups/
