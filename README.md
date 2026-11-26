@@ -6,7 +6,7 @@ How I would run a workflow automation platform (n8n) in a regulated shop: queue 
 
 **Site: https://gerardrecinto.github.io/automation-platform-ops/**
 
-Lab scale, one host. Not a bank, not production. See "What is verified".
+Runs on one host. See "What is verified".
 
 ## Run it
 
